@@ -1,34 +1,36 @@
 INCLUDE Irvine32.inc
 
 .data
-    visibleBoard BYTE 26*13 DUP(?)   ; Visible board, initialized with '*'
-    actualBoard  BYTE 26*13 DUP(?)   ; Actual board with mines
+    visibleBoard BYTE 26*13 DUP('-')   ; Visible board, initialized with '-'
+    actualBoard  BYTE 26*13 DUP('0')   ; Actual board with mines
 
     rows dword ?
     cols dword ?
     row dword ?
     col dword ?
-    mines BYTE ?
+    mines dword ?
+    action byte ?
 
-    ; ===== Board printing strings =====
+    ; Board printing strings
     header1   BYTE 13 dup(' '),0
     header2   BYTE 13 dup(' '),0
     twoSpaces BYTE "  ",0
     indent    BYTE "                ",0
-    newlines  BYTE 13,10,0
 
-    ; ===== Difficulty messages =====
+    ; Difficulty messages
     diff1 BYTE "Choose difficulty (1: Easy, 2: Medium, 3: Hard): ",0
     diff2 BYTE "Invalid difficulty selected. Please try again: ",0
 
-    ; ===== Input Messages =====
+    ; Input Messages
     rowInput BYTE "Enter row: ", 0
     colInput BYTE "Enter column: ", 0
     invalidInputMsg BYTE "Invalid input. Please enter values within the board range.",0
+    actionMsg BYTE "Do you want to open (O) or flag (F): ",0
 
 .code
 
 difficulty PROC
+    pushad
     mov edx, OFFSET diff1
     call WriteString
 
@@ -63,14 +65,178 @@ difficulty PROC
         call WriteString
         jmp difficultyInput
     done:
+        popad
         ret
 difficulty ENDP
+
+initialise PROC
+    pushad
+
+    ; Initialize visible board with '*'
+    mov ecx, 26*13
+    mov edi, OFFSET visibleBoard
+    mov al, '-'
+    fill_board:
+        stosb
+    loop fill_board
+
+    call placeMines
+
+    popad
+    ret
+initialise ENDP
+
+placeMines PROC
+    pushad
+    call Randomize  
+
+    mov ecx, mines
+    place_mine_loop:
+        mov eax, rows
+        call RandomRange
+        mov ebx, eax
+
+        mov eax, cols
+        call RandomRange
+        mov edx, eax
+
+        mov eax, ebx
+        imul eax, cols
+        add eax, edx
+
+        mov bl, [actualBoard + eax]
+        cmp bl, '*'
+        je place_mine_loop
+
+        mov [actualBoard + eax], '*'
+    loop place_mine_loop
+    popad
+    ret
+placeMines ENDP
+
+validate PROC
+    push ebp
+    mov ebp, esp
+
+    mov eax, [ebp+8]
+    cmp eax, 0
+    jl invalid_input
+    mov ebx, rows
+    cmp eax, ebx
+    jge invalid_input
+    mov eax, [ebp+12]
+    cmp eax, 0
+    jl invalid_input
+    mov ebx, cols
+    cmp eax, ebx
+    jge invalid_input
+    or al, 1
+    jmp done
+
+    invalid_input:
+    test al, 0
+
+    done:
+    pop ebp
+    ret 8
+validate ENDP
+
+
+takeInput PROC
+    pushad
+    jmp l1
+
+    l2:
+    mov edx, OFFSET invalidInputMsg
+    call WriteString
+    call crlf
+
+    l1:
+    mov edx, offset rowInput
+    call WriteString
+    call ReadInt
+    mov row, eax
+
+    mov edx, offset colInput
+    call WriteString
+    call ReadInt
+    mov col, eax
+
+    push col
+    push row
+    call validate
+    jz l2
+
+    l3:
+    mov edx, offset actionMsg
+    call WriteString
+    call ReadChar
+    cmp al, 'O'
+    jz next
+    cmp al, 'o'
+    jz next
+    cmp al, 'F'
+    jz next
+    cmp al, 'f'
+    jz next
+    call crlf
+    jmp l3
+    next:
+    mov action, al
+
+    popad
+    ret
+takeInput ENDP
+
+playMove PROC
+
+    call takeInput
+    cmp action, 'F'
+    je flag_cell
+    cmp action, 'f'
+    je flag_cell
+
+    flag_cell:
+        mov eax, row
+        imul eax, cols
+        add eax, col
+        mov bl, [visibleBoard + eax]
+        cmp bl, 'F'
+        je unflag_cell
+        mov [visibleBoard + eax], 'F'
+        jmp done_move
+
+    unflag_cell:
+        mov eax, row
+        imul eax, cols
+        add eax, col
+        mov [visibleBoard + eax], '-'
+        jmp done_move
+
+
+    done_move:
+    ret
+playMove ENDP
+
+main PROC
+    call difficulty
+
+    call initialise
+
+    call printboard
+
+    call playMove
+
+    call printboard
+
+    exit
+main ENDP
 
 printboard PROC
     push ebp
     mov ebp, esp
 
-    mov ebx, OFFSET visibleBoard
+    mov ebx, OFFSET VisibleBoard
     call Clrscr
 
     mov ecx, rows        ; total rows
@@ -166,75 +332,5 @@ end_print:
     pop ebp
     ret
 printboard ENDP
-
-validateInput PROC
-    pushad
-
-    mov eax, row
-    cmp eax, 0
-    jl invalid_input
-    mov ebx, rows
-    cmp eax, ebx
-    jge invalid_input
-    mov eax, col
-    cmp eax, 0
-    jl invalid_input
-    mov ebx, cols
-    cmp eax, ebx
-    jge invalid_input
-    ; Valid input
-    or al, 1
-    jmp done
-
-    invalid_input:
-        mov edx, OFFSET invalidInputMsg
-        call WriteString
-        call crlf
-        test al, 0
-
-    done:
-    popad
-    ret
-validateInput ENDP
-
-
-
-takeInput PROC
-    pushad
-
-    l1:
-    mov edx, offset rowInput
-    call WriteString
-    call ReadInt
-    mov row, eax
-
-    mov edx, offset colInput
-    call WriteString
-    call ReadInt
-    mov col, eax
-
-    call validateInput
-    jz l1
-    popad
-    ret
-takeInput ENDP
-
-main PROC
-    call difficulty
-
-    ; Initialize visible board with '*'
-    mov ecx, 26*13
-    mov edi, OFFSET visibleBoard
-    mov al, '*'
-    fill_board:
-        stosb
-        loop fill_board
-
-    call printboard
-
-    call takeInput
-
-    exit
-main ENDP
 
 END main

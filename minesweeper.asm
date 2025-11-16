@@ -27,6 +27,9 @@ INCLUDE Irvine32.inc
     invalidInputMsg BYTE "Invalid input. Please enter values within the board range.",0
     actionMsg BYTE "Do you want to open (O) or flag (F): ",0
 
+    ;Game Over Message
+    gameOverMsg BYTE "Game Over! You hit a mine.",0
+
 .code
 
 difficulty PROC
@@ -188,6 +191,20 @@ takeInput PROC
     ret
 takeInput ENDP
 
+checkMine PROC
+    push ebp
+    mov ebp, esp
+
+    mov eax, [ebp+8]
+    imul eax, cols
+    add eax, [ebp+12]
+    mov bl, [actualBoard + eax]
+    cmp bl, '*'
+
+    pop ebp
+    ret 8
+checkMine ENDP
+
 playMove PROC
 
     call takeInput
@@ -195,6 +212,7 @@ playMove PROC
     je flag_cell
     cmp action, 'f'
     je flag_cell
+    jmp open_cell
 
     flag_cell:
         mov eax, row
@@ -213,6 +231,14 @@ playMove PROC
         mov [visibleBoard + eax], '-'
         jmp done_move
 
+    open_cell:
+        push col
+        push row
+        call checkMine
+        jz done_move
+
+
+
 
     done_move:
     ret
@@ -223,11 +249,13 @@ main PROC
 
     call initialise
 
+    nextMove:
     call printboard
-
     call playMove
+    jnz nextMove
 
-    call printboard
+    mov edx, OFFSET gameOverMsg
+    call WriteString
 
     exit
 main ENDP

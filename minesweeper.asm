@@ -30,6 +30,12 @@ INCLUDE Irvine32.inc
     ;Game Over Message
     gameOverMsg BYTE "Game Over! You hit a mine.",0
 
+    ;Game Win Message
+    gameWinMsg BYTE "Congratulations! You've cleared the minefield!",0
+
+    ;Restart Message
+    restartMsg BYTE "Do you want to restart the game (Y/N): ",0
+
 .code
 
 difficulty PROC
@@ -82,6 +88,13 @@ initialise PROC
     fill_board:
         stosb
     loop fill_board
+
+    mov ecx, 26*13
+    mov edi, OFFSET actualBoard
+    mov al, '0'
+    fill_board_actual:
+        stosb
+    loop fill_board_actual
 
     call placeMines
 
@@ -199,13 +212,213 @@ checkMine PROC
     imul eax, cols
     add eax, [ebp+12]
     mov bl, [actualBoard + eax]
+    or al, 1
     cmp bl, '*'
 
     pop ebp
     ret 8
 checkMine ENDP
 
+openCell PROC
+
+    push ebp
+    mov ebp, esp
+
+    sub esp, 4
+    mov eax, 0
+    mov [ebp-4], eax
+
+    mov eax, [ebp+8]
+    imul eax, cols
+    add eax, [ebp+12]
+    mov cl, [visibleBoard + eax]
+    cmp cl, '-'
+    jne done_open
+
+    mov ecx, [ebp+8]
+    add ecx, 1
+    push col
+    push ecx
+    call validate
+    jz next
+    push col
+    push ecx
+    call checkMine
+    jnz next
+    mov eax, 1
+    add [ebp-4], eax
+
+    next:
+    mov ecx, [ebp+8]
+    sub ecx, 1
+    push col
+    push ecx
+    call validate
+    jz next2
+    push col
+    push ecx
+    call checkMine
+    jnz next2
+    mov eax, 1
+    add [ebp-4], eax
+
+    next2:
+    mov ecx, [ebp+12]
+    add ecx, 1
+    push ecx
+    push row
+    call validate
+    jz next3
+    push ecx
+    push row
+    call checkMine
+    jnz next3
+    mov eax, 1
+    add [ebp-4], eax
+
+    next3:
+    mov ecx, [ebp+12]
+    sub ecx, 1
+    push ecx
+    push row
+    call validate
+    jz next4
+    push ecx
+    push row
+    call checkMine
+    jnz next4
+    mov eax, 1
+    add [ebp-4], eax
+
+    next4:
+    mov eax, [ebp+8]
+    inc eax
+    mov ecx, [ebp+12]
+    inc ecx
+    push ecx
+    push eax
+    call validate
+    jz next5
+    push ecx
+    push eax
+    call checkMine
+    jnz next5
+    mov eax, 1
+    add [ebp-4], eax
+
+    next5:
+    mov eax, [ebp+8]
+    dec eax
+    mov ecx, [ebp+12]
+    inc ecx
+    push ecx
+    push eax
+    call validate
+    jz next6
+    push ecx
+    push eax
+    call checkMine
+    jnz next6
+    mov eax, 1
+    add [ebp-4], eax
+
+    next6:
+    mov eax, [ebp+8]
+    inc eax
+    mov ecx, [ebp+12]
+    dec ecx
+    push ecx
+    push eax
+    call validate
+    jz next7
+    push ecx
+    push eax
+    call checkMine
+    jnz next7
+    mov eax, 1
+    add [ebp-4], eax
+
+    next7:
+    mov eax, [ebp+8]
+    dec eax
+    mov ecx, [ebp+12]
+    dec ecx
+    push ecx
+    push eax
+    call validate
+    jz l1
+    push ecx
+    push eax
+    call checkMine
+    jnz l1
+    mov eax, 1
+    add [ebp-4], eax
+
+    l1:
+    ;mov eax, [ebp-4]
+    ;cmp eax, 0
+    ;jnz set_count
+    ;jz recurse
+
+    set_count:
+    mov ebx, [ebp-4]
+    add ebx, '0'
+    mov eax, [ebp+8]
+    imul eax, cols
+    add eax, [ebp+12]
+    mov [visibleBoard + eax], bl
+
+    recurse:
+    
+    done_open:
+    mov esp, ebp
+    pop ebp
+    ret 8
+openCell ENDP
+
+showMines PROC
+    pushad
+
+    mov  row, 0          
+    rowL:
+        mov ebx, rows
+        cmp  row, ebx
+        jge  done        
+
+        mov  col, 0          
+    colL:
+        mov  ebx, cols
+        cmp  col, ebx
+        jge  next
+
+        push col             
+        push row             
+        call checkMine       
+    
+        jz placemine 
+        jmp skipcell
+
+    placemine:
+        mov  eax, row
+        imul eax, cols
+        add  eax, col
+        mov  [VisibleBoard + eax], '*'
+
+    skipcell:
+        inc  col
+        jmp  colL
+
+    next:
+        inc  row
+        jmp  rowL
+
+    done:
+    popad
+    ret
+showMines ENDP
+
 playMove PROC
+    pushad
 
     call takeInput
     cmp action, 'F'
@@ -236,42 +449,123 @@ playMove PROC
         push row
         call checkMine
         jz done_move
-
-
-
+        push col
+        push row
+        call openCell
+        or al, 1
 
     done_move:
+    popad
     ret
 playMove ENDP
 
 main PROC
-    call difficulty
+    
+    startGame:
+        call Clrscr
+        call difficulty
 
-    call initialise
+        call initialise
 
     nextMove:
-    call printboard
-    call playMove
-    jnz nextMove
+        call checkWinCondition
+        jz gameWin
+        call printboard
+        call playMove
+        jnz nextMove
+        jmp gameOver
 
-    mov edx, OFFSET gameOverMsg
-    call WriteString
+    gameOver:
+        call showMines
+        call printboard
+        mov edx, OFFSET gameOverMsg
+        call WriteString
+        jmp RestartProgram
 
+    gameWin:
+        call Clrscr
+        mov edx, OFFSET gameWinMsg
+        call WriteString
+        call printboard
+
+    RestartProgram:
+        call crlf
+        call crlf
+        mov edx, OFFSET restartMsg
+        call WriteString
+        call ReadChar
+        cmp al, 'Y'
+        je startGame
+        cmp al, 'y'
+        je startGame
+        jmp exitProgram
+
+
+    exitProgram:
     exit
 main ENDP
+
+CheckWinCondition PROC
+    pushad
+
+    mov  row, 0          
+    rowL:
+        mov ebx, rows
+        cmp  row, ebx
+        jge  win         
+
+        mov  col, 0          
+    colL:
+        mov  ebx, cols
+        cmp  col, ebx
+        jge  next         ; next row
+
+        push col             
+        push row             
+        call checkMine       
+    
+        jz   skipcell        
+
+        mov  eax, row
+        imul eax, cols
+        add  eax, col
+        mov  al, [VisibleBoard + eax]
+
+        cmp al, '-'
+        jnz  skipcell        
+
+        ; if closed non-mine cell found then...
+        or   al, 1           
+        jmp  Done
+
+    skipcell:
+        inc  col
+        jmp  colL
+
+    next:
+        inc  row
+        jmp  rowL
+
+    win:
+        test al, 0           
+
+    Done:
+    popad
+    ret
+CheckWinCondition ENDP
 
 printboard PROC
     push ebp
     mov ebp, esp
 
     mov ebx, OFFSET VisibleBoard
-    call Clrscr
+    ;call Clrscr
 
     mov ecx, rows        ; total rows
     mov edi, cols        ; total columns
 
     ; Print column header - Tens
-    mov esi, 0          ; column counter
+    mov esi, 0          ; column [ebp-4]er
     mov edx, OFFSET indent ; indent to align headers with board
     call WriteString
 

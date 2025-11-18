@@ -117,7 +117,7 @@ placeMines PROC
         mov edx, eax
 
         mov eax, ebx
-        imul eax, cols
+        imul eax, 13
         add eax, edx
 
         mov bl, [actualBoard + eax]
@@ -133,6 +133,7 @@ placeMines ENDP
 validate PROC
     push ebp
     mov ebp, esp
+    push eax
 
     mov eax, [ebp+8]
     cmp eax, 0
@@ -153,6 +154,7 @@ validate PROC
     test al, 0
 
     done:
+    pop eax
     pop ebp
     ret 8
 validate ENDP
@@ -209,7 +211,7 @@ checkMine PROC
     mov ebp, esp
 
     mov eax, [ebp+8]
-    imul eax, cols
+    imul eax, 13
     add eax, [ebp+12]
     mov bl, [actualBoard + eax]
     or al, 1
@@ -229,7 +231,7 @@ openCell PROC
     mov [ebp-4], eax
 
     mov eax, [ebp+8]
-    imul eax, cols
+    imul eax, 13
     add eax, [ebp+12]
     mov cl, [visibleBoard + eax]
     cmp cl, '-'
@@ -364,9 +366,9 @@ openCell PROC
     mov ebx, [ebp-4]
     add ebx, '0'
     mov eax, [ebp+8]
-    imul eax, cols
+    imul eax, 13
     add eax, [ebp+12]
-    mov [actualBoard + eax], bl
+    mov [VisibleBoard + eax], bl
 
     recurse:
     
@@ -400,7 +402,7 @@ showMines PROC
 
     placemine:
         mov  eax, row
-        imul eax, cols
+        imul eax, 13
         add  eax, col
         mov  [VisibleBoard + eax], '*'
 
@@ -429,7 +431,7 @@ playMove PROC
 
     flag_cell:
         mov eax, row
-        imul eax, cols
+        imul eax, 13
         add eax, col
         mov bl, [visibleBoard + eax]
         cmp bl, 'F'
@@ -439,7 +441,7 @@ playMove PROC
 
     unflag_cell:
         mov eax, row
-        imul eax, cols
+        imul eax, 13
         add eax, col
         mov [visibleBoard + eax], '-'
         jmp done_move
@@ -527,7 +529,7 @@ CheckWinCondition PROC
         jz   skipcell        
 
         mov  eax, row
-        imul eax, cols
+        imul eax, 13
         add  eax, col
         mov  al, [VisibleBoard + eax]
 
@@ -558,7 +560,7 @@ printboard PROC
     push ebp
     mov ebp, esp
 
-    mov ebx, OFFSET actualBoard
+    mov ebx, OFFSET VisibleBoard
     ;call Clrscr
 
     mov ecx, rows        ; total rows

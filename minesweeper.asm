@@ -366,7 +366,7 @@ openCell PROC
     mov eax, [ebp+8]
     imul eax, cols
     add eax, [ebp+12]
-    mov [visibleBoard + eax], bl
+    mov [actualBoard + eax], bl
 
     recurse:
     
@@ -558,7 +558,7 @@ printboard PROC
     push ebp
     mov ebp, esp
 
-    mov ebx, OFFSET VisibleBoard
+    mov ebx, OFFSET actualBoard
     ;call Clrscr
 
     mov ecx, rows        ; total rows

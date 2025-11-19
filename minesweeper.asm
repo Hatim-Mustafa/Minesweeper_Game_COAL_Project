@@ -411,6 +411,12 @@ openCell PROC
     jmp done_open
 
     recurse:
+    mov bl, '0'
+    mov eax, [ebp+8]
+    imul eax, cols
+    add eax, [ebp+12]
+    mov [VisibleBoard + eax], bl
+
     mov ecx, [ebp+8]
     add ecx, 1
     push col

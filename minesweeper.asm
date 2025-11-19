@@ -10,6 +10,7 @@ INCLUDE Irvine32.inc
     col dword ?
     mines dword ?
     action byte ?
+    first byte 1
 
     ; Board printing strings
     header1   BYTE 13 dup(' '),0
@@ -98,6 +99,8 @@ initialise PROC
 
     call placeMines
 
+    mov first, 1
+
     popad
     ret
 initialise ENDP
@@ -117,7 +120,7 @@ placeMines PROC
         mov edx, eax
 
         mov eax, ebx
-        imul eax, 13
+        imul eax, cols
         add eax, edx
 
         mov bl, [actualBoard + eax]
@@ -129,6 +132,40 @@ placeMines PROC
     popad
     ret
 placeMines ENDP
+
+replaceMine PROC
+    push ebp
+    mov ebp, esp
+
+    call Randomize
+
+    l1:
+        mov eax, rows
+        call RandomRange
+        mov ebx, eax
+
+        mov eax, cols
+        call RandomRange
+        mov edx, eax
+
+        push edx
+        push ebx
+        call checkMine
+    jz l1
+
+    mov eax, ebx
+    imul eax, cols
+    add eax, edx
+    mov [actualBoard + eax], '*'
+
+    mov eax, [ebp+8]
+    imul eax, cols
+    add eax, [ebp+12]
+    mov [actualBoard + eax], '0'
+
+    pop ebp
+    ret 8
+replaceMine ENDP
 
 validate PROC
     push ebp
@@ -209,14 +246,16 @@ takeInput ENDP
 checkMine PROC
     push ebp
     mov ebp, esp
+    push ebx
 
     mov eax, [ebp+8]
-    imul eax, 13
+    imul eax, cols
     add eax, [ebp+12]
     mov bl, [actualBoard + eax]
     or al, 1
     cmp bl, '*'
 
+    pop ebx
     pop ebp
     ret 8
 checkMine ENDP
@@ -231,7 +270,7 @@ openCell PROC
     mov [ebp-4], eax
 
     mov eax, [ebp+8]
-    imul eax, 13
+    imul eax, cols
     add eax, [ebp+12]
     mov cl, [visibleBoard + eax]
     cmp cl, '-'
@@ -357,20 +396,115 @@ openCell PROC
     add [ebp-4], eax
 
     l1:
-    ;mov eax, [ebp-4]
-    ;cmp eax, 0
-    ;jnz set_count
-    ;jz recurse
+    mov eax, [ebp-4]
+    cmp eax, 0
+    jnz set_count
+    jz recurse
 
     set_count:
     mov ebx, [ebp-4]
     add ebx, '0'
     mov eax, [ebp+8]
-    imul eax, 13
+    imul eax, cols
     add eax, [ebp+12]
     mov [VisibleBoard + eax], bl
+    jmp done_open
 
     recurse:
+    mov ecx, [ebp+8]
+    add ecx, 1
+    push col
+    push ecx
+    call validate
+    jz nextR
+    push col
+    push ecx
+    call openCell
+
+    nextR:
+    mov ecx, [ebp+8]
+    sub ecx, 1
+    push col
+    push ecx
+    call validate
+    jz nextR2
+    push col
+    push ecx
+    call openCell
+
+    nextR2:
+    mov ecx, [ebp+12]
+    add ecx, 1
+    push ecx
+    push row
+    call validate
+    jz nextR3
+    push ecx
+    push row
+    call openCell
+
+    nextR3:
+    mov ecx, [ebp+12]
+    sub ecx, 1
+    push ecx
+    push row
+    call validate
+    jz nextR4
+    push ecx
+    push row
+    call openCell
+
+    nextR4:
+    mov eax, [ebp+8]
+    inc eax
+    mov ecx, [ebp+12]
+    inc ecx
+    push ecx
+    push eax
+    call validate
+    jz nextR5
+    push ecx
+    push eax
+    call openCell
+
+    nextR5:
+    mov eax, [ebp+8]
+    dec eax
+    mov ecx, [ebp+12]
+    inc ecx
+    push ecx
+    push eax
+    call validate
+    jz nextR6
+    push ecx
+    push eax
+    call openCell
+
+    nextR6:
+    mov eax, [ebp+8]
+    inc eax
+    mov ecx, [ebp+12]
+    dec ecx
+    push ecx
+    push eax
+    call validate
+    jz nextR7
+    push ecx
+    push eax
+    call openCell
+
+    nextR7:
+    mov eax, [ebp+8]
+    dec eax
+    mov ecx, [ebp+12]
+    dec ecx
+    push ecx
+    push eax
+    call validate
+    jz done_open
+    push ecx
+    push eax
+    call openCell
     
     done_open:
     mov esp, ebp
@@ -402,7 +536,7 @@ showMines PROC
 
     placemine:
         mov  eax, row
-        imul eax, 13
+        imul eax, cols
         add  eax, col
         mov  [VisibleBoard + eax], '*'
 
@@ -431,7 +565,7 @@ playMove PROC
 
     flag_cell:
         mov eax, row
-        imul eax, 13
+        imul eax, cols
         add eax, col
         mov bl, [visibleBoard + eax]
         cmp bl, 'F'
@@ -441,7 +575,7 @@ playMove PROC
 
     unflag_cell:
         mov eax, row
-        imul eax, 13
+        imul eax, cols
         add eax, col
         mov [visibleBoard + eax], '-'
         jmp done_move
@@ -450,7 +584,21 @@ playMove PROC
         push col
         push row
         call checkMine
-        jz done_move
+        jz first_move
+        jmp open
+
+        first_move:
+            cmp first, 0
+            jnz replace_mine
+            jmp done_move
+
+        replace_mine:
+            push col
+            push row
+            call replaceMine
+
+        open:
+        mov first, 0
         push col
         push row
         call openCell
@@ -466,7 +614,6 @@ main PROC
     startGame:
         call Clrscr
         call difficulty
-
         call initialise
 
     nextMove:
@@ -529,7 +676,7 @@ CheckWinCondition PROC
         jz   skipcell        
 
         mov  eax, row
-        imul eax, 13
+        imul eax, cols
         add  eax, col
         mov  al, [VisibleBoard + eax]
 
@@ -561,7 +708,7 @@ printboard PROC
     mov ebp, esp
 
     mov ebx, OFFSET VisibleBoard
-    ;call Clrscr
+    call Clrscr
 
     mov ecx, rows        ; total rows
     mov edi, cols        ; total columns

@@ -238,21 +238,9 @@ takeInput PROC
     cmp al, 'o'
     jz next
     cmp al, 'f'
-    jz Aflag
+    jz next
     cmp al, 'F'
-    jz Aflag
-
-    Aflag:
-        cmp flags,0
-        jle zeroFlags
-        dec flags
-        jmp next
-
-    zeroFLags:
-        mov edx, offset noflags
-        call writestring
-        call crlf
-        jmp l3
+    jz next
 
     call crlf
     jmp l3
@@ -298,11 +286,12 @@ openCell PROC
 
     mov ecx, [ebp+8]
     add ecx, 1
-    push col
+    mov eax, [ebp+12]
+    push eax
     push ecx
     call validate
     jz next
-    push col
+    push eax
     push ecx
     call checkMine
     jnz next
@@ -312,11 +301,12 @@ openCell PROC
     next:
     mov ecx, [ebp+8]
     sub ecx, 1
-    push col
+    mov eax, [ebp+12]
+    push eax
     push ecx
     call validate
     jz next2
-    push col
+    push eax
     push ecx
     call checkMine
     jnz next2
@@ -326,12 +316,13 @@ openCell PROC
     next2:
     mov ecx, [ebp+12]
     add ecx, 1
+    mov eax, [ebp+8]
     push ecx
-    push row
+    push eax
     call validate
     jz next3
     push ecx
-    push row
+    push eax
     call checkMine
     jnz next3
     mov eax, 1
@@ -340,12 +331,13 @@ openCell PROC
     next3:
     mov ecx, [ebp+12]
     sub ecx, 1
+    mov eax, [ebp+8]
     push ecx
-    push row
+    push eax
     call validate
     jz next4
     push ecx
-    push row
+    push eax
     call checkMine
     jnz next4
     mov eax, 1
@@ -439,45 +431,49 @@ openCell PROC
 
     mov ecx, [ebp+8]
     add ecx, 1
-    push col
+    mov eax, [ebp+12]
+    push eax
     push ecx
     call validate
     jz nextR
-    push col
+    push eax
     push ecx
     call openCell
 
     nextR:
     mov ecx, [ebp+8]
     sub ecx, 1
-    push col
+    mov eax, [ebp+12]
+    push eax
     push ecx
     call validate
     jz nextR2
-    push col
+    push eax
     push ecx
     call openCell
 
     nextR2:
     mov ecx, [ebp+12]
     add ecx, 1
+    mov eax, [ebp+8]
     push ecx
-    push row
+    push eax
     call validate
     jz nextR3
     push ecx
-    push row
+    push eax
     call openCell
 
     nextR3:
     mov ecx, [ebp+12]
     sub ecx, 1
+    mov eax, [ebp+8]
     push ecx
-    push row
+    push eax
     call validate
     jz nextR4
     push ecx
-    push row
+    push eax
     call openCell
 
     nextR4:
@@ -596,7 +592,12 @@ playMove PROC
         mov bl, [visibleBoard + eax]
         cmp bl, 'F'
         je unflag_cell
+        cmp flags, 1
+        jl done_move
+
         mov [visibleBoard + eax], 'F'
+        dec flags
+        or al, 1
         jmp done_move
 
     unflag_cell:
@@ -659,10 +660,9 @@ main PROC
         jmp RestartProgram
 
     gameWin:
-        call Clrscr
+        call printboard
         mov edx, OFFSET gameWinMsg
         call WriteString
-        call printboard
 
     RestartProgram:
         call crlf
@@ -830,7 +830,7 @@ end_print:
     mov edx, offset flagcount
     mov eax, flags
     call writestring
-    call writeint
+    call writedec
     call crlf
     pop ebp
     ret

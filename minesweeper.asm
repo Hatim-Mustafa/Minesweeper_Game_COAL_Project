@@ -37,6 +37,10 @@ INCLUDE Irvine32.inc
     ;Restart Message
     restartMsg BYTE "Do you want to restart the game (Y/N): ",0
 
+    ;FLAGS
+    flags dword ?
+    flagCount byte "Flags: ",0
+    noFlags byte "Oops! youre out of flags.",0
 .code
 
 difficulty PROC
@@ -59,16 +63,19 @@ difficulty PROC
         mov rows, 12
         mov cols, 9
         mov mines, 10
+        mov flags, 10
         jmp done
     medium:
         mov rows, 19
         mov cols, 10
         mov mines, 35
+        mov flags, 35
         jmp done
     hard:
         mov rows, 26
         mov cols, 13
         mov mines, 75
+        mov flags, 75
         jmp done
     invalid:
         mov edx, OFFSET diff2
@@ -230,10 +237,23 @@ takeInput PROC
     jz next
     cmp al, 'o'
     jz next
-    cmp al, 'F'
-    jz next
     cmp al, 'f'
-    jz next
+    jz Aflag
+    cmp al, 'F'
+    jz Aflag
+
+    Aflag:
+        cmp flags,0
+        jle zeroFlags
+        dec flags
+        jmp next
+
+    zeroFLags:
+        mov edx, offset noflags
+        call writestring
+        jmp l3
+        call crlf
+
     call crlf
     jmp l3
     next:
@@ -278,12 +298,11 @@ openCell PROC
 
     mov ecx, [ebp+8]
     add ecx, 1
-    mov eax, [ebp+12]
-    push eax
+    push col
     push ecx
     call validate
     jz next
-    push eax
+    push col
     push ecx
     call checkMine
     jnz next
@@ -293,12 +312,11 @@ openCell PROC
     next:
     mov ecx, [ebp+8]
     sub ecx, 1
-    mov eax, [ebp+12]
-    push eax
+    push col
     push ecx
     call validate
     jz next2
-    push eax
+    push col
     push ecx
     call checkMine
     jnz next2
@@ -308,13 +326,12 @@ openCell PROC
     next2:
     mov ecx, [ebp+12]
     add ecx, 1
-    mov eax, [ebp+8]
     push ecx
-    push eax
+    push row
     call validate
     jz next3
     push ecx
-    push eax
+    push row
     call checkMine
     jnz next3
     mov eax, 1
@@ -323,13 +340,12 @@ openCell PROC
     next3:
     mov ecx, [ebp+12]
     sub ecx, 1
-    mov eax, [ebp+8]
     push ecx
-    push eax
+    push row
     call validate
     jz next4
     push ecx
-    push eax
+    push row
     call checkMine
     jnz next4
     mov eax, 1
@@ -423,49 +439,45 @@ openCell PROC
 
     mov ecx, [ebp+8]
     add ecx, 1
-    mov eax, [ebp+12]
-    push eax
+    push col
     push ecx
     call validate
     jz nextR
-    push eax
+    push col
     push ecx
     call openCell
 
     nextR:
     mov ecx, [ebp+8]
     sub ecx, 1
-    mov eax, [ebp+12]
-    push eax
+    push col
     push ecx
     call validate
     jz nextR2
-    push eax
+    push col
     push ecx
     call openCell
 
     nextR2:
     mov ecx, [ebp+12]
     add ecx, 1
-    mov eax, [ebp+8]
     push ecx
-    push eax
+    push row
     call validate
     jz nextR3
     push ecx
-    push eax
+    push row
     call openCell
 
     nextR3:
     mov ecx, [ebp+12]
     sub ecx, 1
-    mov eax, [ebp+8]
     push ecx
-    push eax
+    push row
     call validate
     jz nextR4
     push ecx
-    push eax
+    push row
     call openCell
 
     nextR4:
@@ -728,7 +740,7 @@ printboard PROC
     mov edi, cols        ; total columns
 
     ; Print column header - Tens
-    mov esi, 0          ; column [ebp-4]
+    mov esi, 0          ; column [ebp-4]er
     mov edx, OFFSET indent ; indent to align headers with board
     call WriteString
 
@@ -814,6 +826,11 @@ row_done:
     jmp row_loop
 
 end_print:
+    mov edx, offset flagcount
+    mov eax, flags
+    call writestring
+    call writeint
+    call crlf
     pop ebp
     ret
 printboard ENDP

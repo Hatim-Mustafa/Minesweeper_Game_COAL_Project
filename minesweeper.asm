@@ -251,8 +251,8 @@ takeInput PROC
     zeroFLags:
         mov edx, offset noflags
         call writestring
-        jmp l3
         call crlf
+        jmp l3
 
     call crlf
     jmp l3
@@ -604,6 +604,7 @@ playMove PROC
         imul eax, cols
         add eax, col
         mov [visibleBoard + eax], '-'
+        inc flags
         jmp done_move
 
     open_cell:

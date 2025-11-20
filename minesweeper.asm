@@ -278,11 +278,12 @@ openCell PROC
 
     mov ecx, [ebp+8]
     add ecx, 1
-    push col
+    mov eax, [ebp+12]
+    push eax
     push ecx
     call validate
     jz next
-    push col
+    push eax
     push ecx
     call checkMine
     jnz next
@@ -292,11 +293,12 @@ openCell PROC
     next:
     mov ecx, [ebp+8]
     sub ecx, 1
-    push col
+    mov eax, [ebp+12]
+    push eax
     push ecx
     call validate
     jz next2
-    push col
+    push eax
     push ecx
     call checkMine
     jnz next2
@@ -306,12 +308,13 @@ openCell PROC
     next2:
     mov ecx, [ebp+12]
     add ecx, 1
+    mov eax, [ebp+8]
     push ecx
-    push row
+    push eax
     call validate
     jz next3
     push ecx
-    push row
+    push eax
     call checkMine
     jnz next3
     mov eax, 1
@@ -320,12 +323,13 @@ openCell PROC
     next3:
     mov ecx, [ebp+12]
     sub ecx, 1
+    mov eax, [ebp+8]
     push ecx
-    push row
+    push eax
     call validate
     jz next4
     push ecx
-    push row
+    push eax
     call checkMine
     jnz next4
     mov eax, 1
@@ -419,45 +423,49 @@ openCell PROC
 
     mov ecx, [ebp+8]
     add ecx, 1
-    push col
+    mov eax, [ebp+12]
+    push eax
     push ecx
     call validate
     jz nextR
-    push col
+    push eax
     push ecx
     call openCell
 
     nextR:
     mov ecx, [ebp+8]
     sub ecx, 1
-    push col
+    mov eax, [ebp+12]
+    push eax
     push ecx
     call validate
     jz nextR2
-    push col
+    push eax
     push ecx
     call openCell
 
     nextR2:
     mov ecx, [ebp+12]
     add ecx, 1
+    mov eax, [ebp+8]
     push ecx
-    push row
+    push eax
     call validate
     jz nextR3
     push ecx
-    push row
+    push eax
     call openCell
 
     nextR3:
     mov ecx, [ebp+12]
     sub ecx, 1
+    mov eax, [ebp+8]
     push ecx
-    push row
+    push eax
     call validate
     jz nextR4
     push ecx
-    push row
+    push eax
     call openCell
 
     nextR4:
@@ -720,7 +728,7 @@ printboard PROC
     mov edi, cols        ; total columns
 
     ; Print column header - Tens
-    mov esi, 0          ; column [ebp-4]er
+    mov esi, 0          ; column [ebp-4]
     mov edx, OFFSET indent ; indent to align headers with board
     call WriteString
 

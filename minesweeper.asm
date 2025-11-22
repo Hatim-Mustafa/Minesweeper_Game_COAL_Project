@@ -12,6 +12,19 @@ INCLUDE Irvine32.inc
     action byte ?
     first byte 1
 
+    ;Timer variables
+    startTime   DWORD 0
+    finishTime  DWORD 0
+    elapsedTime DWORD 0
+
+    easyHigh    DWORD 0FFFFFFFFh   ; initialize to large value
+    medHigh     DWORD 0FFFFFFFFh
+    hardHigh    DWORD 0FFFFFFFFh
+
+    timeMsg     BYTE "Time: ",0
+    newHSmsg    BYTE "New High Score!",0
+    hsMsg       BYTE "High Score: ",0
+
     ; Board printing strings
     header1   BYTE 13 dup(' '),0
     header2   BYTE 13 dup(' '),0
@@ -42,6 +55,103 @@ INCLUDE Irvine32.inc
     flagCount byte "Flags: ",0
     noFlags byte "Oops! youre out of flags.",0
 .code
+
+StartTimer PROC
+    pushad
+    call GetMseconds
+    mov startTime, eax
+    popad
+    ret
+StartTimer ENDP
+
+StopTimer PROC
+    pushad
+    call GetMseconds
+    mov finishTime, eax
+
+    mov eax, finishTime
+    sub eax, startTime
+    mov ebx, 0
+    xor edx, edx
+    mov ebx, 1000
+    div ebx
+    mov elapsedTime, eax
+
+    ; Display elapsed time
+    mov edx, OFFSET timeMsg
+    call WriteString
+    mov eax, elapsedTime
+    call WriteDec
+    call Crlf
+
+    popad
+    ret
+StopTimer ENDP
+
+UpdateHighScore PROC
+    pushad
+
+    mov eax, elapsedTime
+
+    cmp rows, 12      ; easy diff
+    jne check_med
+    cmp eax, easyHigh
+    jae doneHS
+    mov easyHigh, eax
+    jmp printNew
+
+check_med:
+    cmp rows, 19      ; medium diff
+    jne check_hard
+    cmp eax, medHigh
+    jae doneHS
+    mov medHigh, eax
+    jmp printNew
+
+check_hard:
+    ; HARD difficulty
+    cmp eax, hardHigh
+    jae doneHS
+    mov hardHigh, eax
+
+printNew:
+    mov edx, OFFSET newHSmsg
+    call WriteString
+    call Crlf
+    jmp doneHS
+
+doneHS:
+    popad
+    ret
+UpdateHighScore ENDP
+
+
+ShowHighScore PROC
+    pushad
+
+    cmp rows,12
+    jne sh_med
+    mov eax, easyHigh
+    jmp sh_print
+
+sh_med:
+    cmp rows,19
+    jne sh_hard
+    mov eax, medHigh
+    jmp sh_print
+
+sh_hard:
+    mov eax, hardHigh
+
+sh_print:
+    mov edx, OFFSET hsMsg
+    call WriteString
+    call WriteDec
+    call Crlf
+
+    popad
+    ret
+ShowHighScore ENDP
 
 difficulty PROC
     pushad
@@ -643,6 +753,7 @@ main PROC
         call Clrscr
         call difficulty
         call initialise
+        call StartTimer
 
     nextMove:
         call checkWinCondition
@@ -657,12 +768,18 @@ main PROC
         call printboard
         mov edx, OFFSET gameOverMsg
         call WriteString
+        call crlf
+        call StopTimer
         jmp RestartProgram
 
     gameWin:
         call printboard
         mov edx, OFFSET gameWinMsg
         call WriteString
+        call crlf
+        call StopTimer
+        call UpdateHighScore
+        call ShowHighScore
 
     RestartProgram:
         call crlf
@@ -735,7 +852,7 @@ printboard PROC
     mov ebp, esp
 
     mov ebx, OFFSET VisibleBoard
-    call Clrscr
+    ;call Clrscr
 
     mov ecx, rows        ; total rows
     mov edi, cols        ; total columns

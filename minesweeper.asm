@@ -702,6 +702,8 @@ playMove PROC
         mov bl, [visibleBoard + eax]
         cmp bl, 'F'
         je unflag_cell
+        cmp bl, '-'
+        jne done_move
         cmp flags, 1
         jl done_move
 

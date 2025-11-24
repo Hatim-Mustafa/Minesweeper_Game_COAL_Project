@@ -858,10 +858,11 @@ printboard PROC
 
     mov ecx, rows        ; total rows
     mov edi, cols        ; total columns
-
+    
+    call crlf
     ; Print column header - Tens
-    mov esi, 0          ; column [ebp-4]er
-    mov edx, OFFSET indent ; indent to align headers with board
+    mov esi, 0
+    mov edx, OFFSET indent
     call WriteString
 
 print_tens_loop:
@@ -871,7 +872,6 @@ print_tens_loop:
     cmp esi, 9
     jle tens_space
 
-    ; >=10, print tens digit + space
     mov eax, 1
     call WriteDec
     mov al,' '
@@ -890,9 +890,9 @@ tens_done:
 
     ; Print column header - Ones
     mov esi, 0
-
     mov edx, OFFSET indent
-    call WriteString 
+    call WriteString
+
 print_ones_loop:
     cmp esi, edi
     jge ones_done
@@ -922,16 +922,36 @@ row_loop:
     call WriteString
 
     mov esi, 0 ; column index
+
 col_loop:
     cmp esi, edi
     jge row_done
 
+    ; ---------- INDEX CALC ----------
     mov eax, ecx
     mul edi
-    add eax, esi    ; index = row*cols + col
-    mov al, [ebx + eax]
+    add eax, esi        ; eax = row*cols + col (need since its just a 1d array)
+
+    ; ---------- LOAD CHARACTER ----------
+    mov dl, [ebx + eax]
+
+    cmp dl, 'F'        ;check if flag
+    jne normal_char
+
+    mov eax, 4          ; red
+    call SetTextColor
+    mov al, dl
     call WriteChar
-    mov al,' '
+    mov eax, 7
+    call SetTextColor
+    jmp after_char
+
+normal_char:
+    mov al, dl
+    call WriteChar
+
+after_char:
+    mov al, ' '
     call WriteChar
 
     inc esi
@@ -939,7 +959,7 @@ col_loop:
 
 row_done:
     mov eax, ecx
-    call WriteDec     ; print row number
+    call WriteDec
     call Crlf
 
     inc ecx

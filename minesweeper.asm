@@ -854,7 +854,7 @@ printboard PROC
     mov ebp, esp
 
     mov ebx, OFFSET VisibleBoard
-    ;call Clrscr
+    call Clrscr
 
     mov ecx, rows        ; total rows
     mov edi, cols        ; total columns

@@ -525,7 +525,7 @@ openCell PROC
 
     set_count:
     mov ebx, [ebp-4]
-    add ebx, '0'
+    add ebx, ' '
     mov eax, [ebp+8]
     imul eax, cols
     add eax, [ebp+12]
